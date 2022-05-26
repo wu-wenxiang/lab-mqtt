@@ -1,5 +1,9 @@
 # lab-mqtt
 
+Github: <https://github.com/wu-wenxiang/lab-mqtt>
+
+Gitee 同步：<https://gitee.com/wu-wen-xiang/lab-mqtt>
+
 ## 1. 基本环境 Quick Start
 
 ### 1.1 基础环境
@@ -98,7 +102,9 @@ MQTT Spec：<https://mqtt.org/mqtt-specification/>
 | 2 | 1 | 1 |
 | 2 | 2 | 2 |
 
-测试场景：Wireshark 抓包
+测试场景：Wireshark 抓包（如果端口不是 1883，那么直接写 mqtt 过滤不出来，需要设置一下）
+
+![](images/mqtt-wireshark-port-config.png)
 
 一个 Publisher，三个 Subscriber
 
@@ -122,6 +128,21 @@ Clean Session 参考：<http://www.steves-internet-guide.com/mqtt-clean-sessions
 
 Clean Session = False 时，除非 Client 主动 unsubsribe，否则 Topic 一直存在，离线消息会被保存，直至 client 重新上线接收，不论 QoS 0/1/2 均如此。
 
+#### 1.4.4 结论
+
+生产环境中，为了保证不丢包 & 兼顾性能
+
+1. MQTT Version == 3.11 或 5？
+2. CleanSession = True
+3. Retain = False
+4. QoS = 1
+
 ## 2. 压测
+
+### 2.1 Jemeter
+
+### 2.2 代码压测
+
+#### 2.2.1 paho + async
 
 ## 3. 消息共享
