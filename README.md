@@ -141,6 +141,91 @@ Clean Session = False 时，除非 Client 主动 unsubsribe，否则 Topic 一�
 
 ### 2.1 Jemeter
 
+#### 2.1.1 Jmeter 测试 MQTT 服务
+
+##### 2.1.1.1 前提条件
+
+1. 已部署可在公网访问的 MQTT 服务
+2. 已安装 JMeter 5.x 版本
+
+##### 2.1.1.2 安装 MQTT Plugin
+
+1. 下载 mqtt-jmeter 插件最新版本 JAR 包
+2. 拷贝插件 JAR 包到 JMeter 安装目录的 lib/ext/ 子目录下
+
+##### 2.1.1.3 本地编辑 Jmeter 脚本
+
+打开 JMeter，新建脚本。右键单击 `Test Plan` ，选择 `Add > Threads (Users) > Thread Group`。右键单击 `Test Plan`，选择 `Add > Listener > View Results Tree`，添加 `View Results Tree` 监听器，方便本地调试测试脚本。
+
+![](images/mqtt-jmeter-config.png)
+
+##### 2.1.1.4 建立 MQTT 连接
+
+建立 Subscribe 连接
+
+首先建立与 MQTT 服务器之间的连接，并添加 MQTT Sub Sampler 订阅 MQTT 服务器。
+
+![](images/mqtt-jmeter-subscribe.png)
+
+右键单击 `Thread Group`，选择 `Add > Sampler > MQTT Connect`，配置如下：
+
+![](images/mqtt-jmeter-connection.png)
+
+MQTT 连接配置：
+
+- Server name or IP 填写 腾讯MQTT 服务器公网地址。客户端设备通常使用公网访问 MQTT 服务。
+- Port number MQTT 服务器端口。填写 21883。
+- MQTT version 选择 MQTT 版本。选择 3.1.1，目前主流 MQTT 服务器都支持 3.1.1 版本。
+- Timeout(s) 超时秒数填写，即客户端建立连接、发送消息等相关操作的超时时间。填写 10，可按需调整。
+- Protocols 连接协议。选择 TCP，即使用标准 TCP 连接协议。
+MQTT 客户端配置：
+- User name 填写 emqx。
+- Password 填写 public 。
+- ClientId 填写 ${clientId}。（随意）
+- 取消勾选 Add random suffix for ClientId 。本例使用预先准备好的固定客户端 ID，不要添加后缀。
+- Keep alive(s) 活动心跳间隔秒数。填写 300，连接空闲时，每 5 分钟发送一次活动心跳，可按需调整。
+
+##### 2.1.1.5 订阅消息
+
+右键单击 `Thread Group`，选择 `Add > Sampler > MQTT Sub Sampler`，配置如下：
+
+![](images/mqtt-jmeter-subscribe-message.png)
+
+- QoS Level 服务器向客户端推送消息的服务质量。选择 1 ，即至少发送一次，可按需选择其他级别。
+- Topic name 填写消息 topic 。应与发布消息的 topic 匹配。
+- 勾选 Payload includes timestamp，与发送消息时添加时间戳对应，接收消息后从消息头解析出发送时间，从而计算出消息延迟，即从发布端、途经服务器、最后到达订阅端花费的总时间。
+- Sample on 选择 specified elapsed time (ms)，值填写 1000，表示持续接收消息 1000 毫秒。
+这段时间内，可能一条消息都接收不到，也可能接收到多条消息。
+- 勾选 Debug response，记录接收到的消息内容，方便调试排查问题。正式执行性能测试时可取消该选项以优化性能和减少内存占用。
+
+##### 2.1.1.6 建立 Publish 连接
+
+建立与 MQTTOXY 服务之间的连接，并添加 MQTT Pub Sampler
+
+MQTT 连接配置：
+
+- Server name or IP 填写部署 MQTTOXY 服务的服务器公网地址。客户端设备通常使用公网访问 MQTT 服务。
+- Port number MQTT 服务器端口。填写 5883。
+- MQTT version 选择 MQTT 版本。选择 3.1.1，目前主流 MQTT 服务器都支持 3.1.1 版本。
+- Timeout(s) 超时秒数填写，即客户端建立连接、发送消息等相关操作的超时时间。填写 10，可按需调整。
+- Protocols 连接协议。选择 TCP，即使用标准 TCP 连接协议。
+MQTT 客户端配置：
+- User name 填写 emqx。
+- Password 填写 public 。
+- ClientId 填写 `${clientId}`。（随意）
+- 取消勾选 Add random suffix for ClientId 。本例使用预先准备好的固定客户端 ID，不要添加后缀。
+- Keep alive(s) 活动心跳间隔秒数。填写 300，连接空闲时，每 5 分钟发送一次活动心跳，可按需调整。
+
+##### 2.1.1.7 发布消息
+
+右键单击 Thread Group，选择 `Add > Sampler > MQTT Pub Sampler`，配置如下：
+
+![](images/mqtt-jmeter-publish-message.png)
+
+- QoS Level 客户端向服务器发布消息的服务质量。选择 1 ，即至少发送一次，可按需选择其他级别。
+- Topic name 填写消息 topic 。MQTT topic 支持层次结构，使用 / 分割，类似文件路径，如 test_topic/test 等，这里简单使用 test_topic 做测试。
+- 勾选 Add timestamp in payload ，消息头添加发送时间戳，方便测试时检查消息延迟。
+
 ### 2.2 代码压测
 
 #### 2.2.1 paho + async
