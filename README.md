@@ -226,6 +226,90 @@ MQTT 客户端配置：
 - Topic name 填写消息 topic 。MQTT topic 支持层次结构，使用 / 分割，类似文件路径，如 test_topic/test 等，这里简单使用 test_topic 做测试。
 - 勾选 Add timestamp in payload ，消息头添加发送时间戳，方便测试时检查消息延迟。
 
+#### 2.1.2 Jmeter 压测 MQ
+
+创建测试脚本并添加线程组：创建两个脚本，一个用作消息发布，一个用作消息接受
+
+1. 打开 JMeter，新建脚本。右键单击 Test Plan ，选择 `Add > Threads (Users) > Thread Group`
+
+    ![](images/mqtt-jmeter-st-01.png)
+
+2. 将两个脚本中的 Thread Group 分别重命名为 Publish Group 和 Subscribe Group
+
+    ![](images/mqtt-jmeter-st-02.png)
+
+    ![](images/mqtt-jmeter-st-03.png)
+
+添加请求
+
+1. 添加创建连接请求-分别选中 Publish Group 和 Subscribe Group，点击右键，`Add  > Sampler > MQTT Connect`
+
+    ![](images/mqtt-jmeter-st-04.png)
+
+2. 这个请求的作用是进行 MQTT 连接，ip 为 106.15.193.98，端口 1883，用户名 root， 密码 xxxx
+
+    ![](images/mqtt-jmeter-st-05.png)
+
+3. 由于连接操作每个线程中只有一次，因此 Publish Group 和 Subscribe Group 分别需要添加 Once Only Contoller ，然后将 MQTT Connect 拖入其下
+
+    ![](images/mqtt-jmeter-st-06.png)
+
+    ![](images/mqtt-jmeter-st-07.png)
+
+4. 添加循环控制器 Loop Controller 选中 Publish Group 线程组，点击右键，`Add  > Logic Controller > Loop Controller`
+
+    ![](images/mqtt-jmeter-st-08.png)
+
+5. 该循环控制器的作用是设置循环发送消息的次数，这里设置为 2000
+
+    ![](images/mqtt-jmeter-st-09.png)
+
+6. 添加发布请求-选中 Loop Controller，点击右键，`Add  > Sampler > MQTT Pub Sampler`
+
+    ![](images/mqtt-jmeter-st-10.png)
+
+7. 该 MQTT 请求作用是发布消息到服务器，只需要输入主题、发送消息类型、发送消息内容即可
+
+    ![](images/mqtt-jmeter-st-11.png)
+
+8. 添加断开连接请求-选中 Publish Group 线程组，点击右键，`Add  > Sampler > MQTT Disconnect`
+
+    ![](images/mqtt-jmeter-st-12.png)
+
+9. 由于 Subscribe Group 需要保持监听，因此不设断开连接，需要将循环次数设为 Infinite
+
+    ![](images/mqtt-jmeter-st-13.png)
+
+10. 添加订阅请求-选中 Subscribe Group 线程组，点击右键，`Add > Sampler > MQTT Sub Sampler`
+
+    ![](images/mqtt-jmeter-st-14.png)
+
+11. 该请求作用是用来订阅发布的消息，只需要输入主题名称，即可订阅
+
+    ![](images/mqtt-jmeter-st-15.png)
+
+12. 分别为 Publish Group 和 Subscribe Group 添加观察结果树和聚合报告监听器，`Add  > Listener > View Results Tree / Aggregate Report`
+
+    ![](images/mqtt-jmeter-st-16.png)
+
+13. 在 Publish Group 中设置并发数为 200
+
+    ![](images/mqtt-jmeter-st-17.png)
+
+执行测试
+
+1. 首先点击 Subscriber 的 Start 按钮，使之建立连接开始监听
+
+    ![](images/mqtt-jmeter-st-18.png)
+
+2. 再点击 Publisher 的 Start 按钮，开始发送消息
+
+    ![](images/mqtt-jmeter-st-19.png)
+
+测试结果
+
+![](images/mqtt-jmeter-st-20.png)
+
 ### 2.2 代码压测
 
 #### 2.2.1 paho + async
