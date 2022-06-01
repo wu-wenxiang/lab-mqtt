@@ -312,6 +312,140 @@ MQTT 客户端配置：
 
 ### 2.2 代码压测
 
-#### 2.2.1 paho + async
+#### 2.2.1 python MQTT 类库
+
+参考：<https://zhuanlan.zhihu.com/p/258782929>
+
+Python MQTT 类库有三种：
+
+1. <https://github.com/eclipse/paho.mqtt.python> 停更于 2021.10.21
+1. <https://github.com/beerfactory/hbmqtt> 停更于 2020.04.11
+1. <https://github.com/wialon/gmqtt> 停更于 2021.10.18
+
+paho.mqtt.python 文档较全，为主流。
+
+#### 2.2.2 paho + async
+
+参考：<https://github.com/eclipse/paho.mqtt.python/blob/master/examples/loop_asyncio.py>
+
+```python
+#!/usr/bin/env python3
+
+import asyncio
+import socket
+import uuid
+
+import context  # Ensures paho is in PYTHONPATH
+
+import paho.mqtt.client as mqtt
+
+client_id = 'paho-mqtt-python/issue72/' + str(uuid.uuid4())
+topic = client_id
+print("Using client_id / topic: " + client_id)
+
+
+class AsyncioHelper:
+    def __init__(self, loop, client):
+        self.loop = loop
+        self.client = client
+        self.client.on_socket_open = self.on_socket_open
+        self.client.on_socket_close = self.on_socket_close
+        self.client.on_socket_register_write = self.on_socket_register_write
+        self.client.on_socket_unregister_write = self.on_socket_unregister_write
+
+    def on_socket_open(self, client, userdata, sock):
+        print("Socket opened")
+
+        def cb():
+            print("Socket is readable, calling loop_read")
+            client.loop_read()
+
+        self.loop.add_reader(sock, cb)
+        self.misc = self.loop.create_task(self.misc_loop())
+
+    def on_socket_close(self, client, userdata, sock):
+        print("Socket closed")
+        self.loop.remove_reader(sock)
+        self.misc.cancel()
+
+    def on_socket_register_write(self, client, userdata, sock):
+        print("Watching socket for writability.")
+
+        def cb():
+            print("Socket is writable, calling loop_write")
+            client.loop_write()
+
+        self.loop.add_writer(sock, cb)
+
+    def on_socket_unregister_write(self, client, userdata, sock):
+        print("Stop watching socket for writability.")
+        self.loop.remove_writer(sock)
+
+    async def misc_loop(self):
+        print("misc_loop started")
+        while self.client.loop_misc() == mqtt.MQTT_ERR_SUCCESS:
+            try:
+                await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                break
+        print("misc_loop finished")
+
+
+class AsyncMqttExample:
+    def __init__(self, loop):
+        self.loop = loop
+
+    def on_connect(self, client, userdata, flags, rc):
+        print("Subscribing")
+        client.subscribe(topic)
+
+    def on_message(self, client, userdata, msg):
+        if not self.got_message:
+            print("Got unexpected message: {}".format(msg.decode()))
+        else:
+            self.got_message.set_result(msg.payload)
+
+    def on_disconnect(self, client, userdata, rc):
+        self.disconnected.set_result(rc)
+
+    async def main(self):
+        self.disconnected = self.loop.create_future()
+        self.got_message = None
+
+        self.client = mqtt.Client(client_id=client_id)
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
+        self.client.on_disconnect = self.on_disconnect
+
+        aioh = AsyncioHelper(self.loop, self.client)
+
+        self.client.connect('mqtt.eclipseprojects.io', 1883, 60)
+        self.client.socket().setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 2048)
+
+        for c in range(3):
+            await asyncio.sleep(5)
+            print("Publishing")
+            self.got_message = self.loop.create_future()
+            self.client.publish(topic, b'Hello' * 40000, qos=1)
+            msg = await self.got_message
+            print("Got response with {} bytes".format(len(msg)))
+            self.got_message = None
+
+        self.client.disconnect()
+        print("Disconnected: {}".format(await self.disconnected))
+
+
+print("Starting")
+loop = asyncio.get_event_loop()
+loop.run_until_complete(AsyncMqttExample(loop).main())
+loop.close()
+print("Finished")
+```
+
+这里用的是 `asyncio.get_event_loop`，[Get the current event loop. If there is no current event loop set in the current OS thread, the OS thread is main, and set_event_loop() has not yet been called, asyncio will create a new event loop and set it as the current one.Because this function has rather complex behavior (especially when custom event loop policies are in use), using the get_running_loop() function is preferred to get_event_loop() in coroutines and callbacks. Consider also using the asyncio.run() function instead of using lower level functions to manually create and close an event loop. Deprecated since version 3.10: Deprecation warning is emitted if there is no running event loop. In future Python releases, this function will be an alias of get_running_loop().](https://docs.python.org/3/library/asyncio-eventloop.html)，应该用 `get_running_loop` 或者 `asyncio.run()`。
+
+get_running_loop: [Return the running event loop in the current OS thread. If there is no running event loop a RuntimeError is raised. This function can only be called from a coroutine or a callback.](https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.get_running_loop)
+
+[Run until the future (an instance of Future) has completed. If the argument is a coroutine object it is implicitly scheduled to run as a asyncio.Task. Return the Future’s result or raise its exception.](https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_until_complete)
 
 ## 3. 消息共享
