@@ -444,8 +444,16 @@ print("Finished")
 
 这里用的是 `asyncio.get_event_loop`，[Get the current event loop. If there is no current event loop set in the current OS thread, the OS thread is main, and set_event_loop() has not yet been called, asyncio will create a new event loop and set it as the current one.Because this function has rather complex behavior (especially when custom event loop policies are in use), using the get_running_loop() function is preferred to get_event_loop() in coroutines and callbacks. Consider also using the asyncio.run() function instead of using lower level functions to manually create and close an event loop. Deprecated since version 3.10: Deprecation warning is emitted if there is no running event loop. In future Python releases, this function will be an alias of get_running_loop().](https://docs.python.org/3/library/asyncio-eventloop.html)，应该用 `get_running_loop` 或者 `asyncio.run()`。
 
-get_running_loop: [Return the running event loop in the current OS thread. If there is no running event loop a RuntimeError is raised. This function can only be called from a coroutine or a callback.](https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.get_running_loop)
+get_running_loop: [Return the running event loop in the current OS thread. If there is no running event loop a RuntimeError is raised. This function can only be called from a coroutine or a callback.](https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.get_running_loop) New in version 3.7
+
+注意！python 3.6 在 2021.12 停止支持
 
 [Run until the future (an instance of Future) has completed. If the argument is a coroutine object it is implicitly scheduled to run as a asyncio.Task. Return the Future’s result or raise its exception.](https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_until_complete)
+
+#### 2.2.3 异步服务
+
+1. 非常基础的同步和异步编程入门介绍：[Getting Started With Async Features in Python](https://realpython.com/python-async-features/)
+1. [Async IO in Python: A Complete Walkthrough](https://realpython.com/async-io-python/)
+1. 参考 [mode](https://mode.readthedocs.io/en/latest/introduction.html)，去掉 `ensure_future` 和 `asyncio.get_event_loop` <http://github.com/ask/mode>
 
 ## 3. 消息共享
